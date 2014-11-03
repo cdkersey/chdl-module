@@ -2,18 +2,15 @@
 #define CHDL_LOADER_H
 
 #include <chdl/chdl.h>
-#include <chdl/dir.h>
 #include <chdl/ag.h>
+#include <chdl/dir.h>
 #include <map>
 #include <vector>
 #include <sstream>
 #include <string>
 
 namespace chdl {
-  // The run-time equivalent of a CHDL ag.
-  typedef std::map<std::string, std::vector<node> > runtime_ag_t;
-
-  // Turn a string type into a c++ string. TODO: More dignified name?
+  // Turn a string type into a c++ string.
   template <typename T> std::string Stringify(const T &x) { return ""; }
 
   template <char C, typename NEXT>
@@ -22,7 +19,9 @@ namespace chdl {
     return std::string(1, C) + Stringify(NEXT());
   }
 
-  // Turn an input aggregate into a runtime_ag_t.
+  typedef std::map<std::string, std::vector<node> > runtime_ag_t;
+
+  // This should probably get a more dignified name than "runtimify".
   template <typename T>
     void Runtimify(runtime_ag_t &r, const T &x, std::string prefix = "",
                    direction_t dir = DIR_ALL)
@@ -120,6 +119,40 @@ namespace chdl {
   }
 
   #define EXPOSE(x) do { Expose(#x, x); } while(0)
+
+  template <typename T>
+    T Bind(std::string name,
+           std::map<std::string, std::vector<node> > &in,
+           std::map<std::string, std::vector<node> > &out,
+           std::map<std::string, std::vector<tristatenode> > &inout)
+  {
+    using namespace std;
+
+    // The value we'll return, default constructed; all signals independent.
+    T r;
+
+    // The runtime version of the return value, ready for assignment.
+    runtime_ag_t in_module(Runtimify(r, name, DIR_IN)),
+                 out_module(Runtimify(r, name, DIR_OUT)),
+                 inout_module(Runtimify(r, name, DIR_INOUT));
+
+    // TODO: make sure vector sizes match
+
+    // Assign nodes from the arguments to our return value's fields.
+    for (auto &x : in_module)
+      for (unsigned i = 0; i < x.second.size(); ++i)
+        x.second[i] = in[x.first][i];
+
+    for (auto &x : out_module)
+      for (unsigned i = 0; i < x.second.size(); ++i)
+        x.second[i] = out[x.first][i];
+
+    for (auto &x : inout_module)
+      for (unsigned i = 0; i < x.second.size(); ++i)
+        x.second[i] = inout[x.first][i];
+
+    return r;
+  }
 
   // void Load(const char *filename);
 };

@@ -1,171 +1,235 @@
-
 #include <iostream>
 #include <fstream>
 #include <string>
-#include <sstream>
 #include <map>
-#include <vector>
+#include <typeinfo>
 
 #include <chdl/chdl.h>
+#include <chdl/trisimpl.h>
 
-#include <sys/time.h>
+#include "loader.h"
 
-using namespace std;
 using namespace chdl;
+using namespace std;
 
-// The ability to read pre-flattened and pre-optimized netlists is important for
-// the future of CHDL.
+map<nodeid_t, node> gna;  // Global node array
 
-void die(const char* msg) {
-  cerr << msg << endl;
-  exit(1);
-}
-
-unsigned long time_us() {
-  struct timeval tv;
-  gettimeofday(&tv, NULL);
-  return tv.tv_sec * 1000000 + tv.tv_usec;
-}
-
+// This has to be in chdl:: because it seems to be the only way to get
+// memory_internal and memory_add_read_port
 namespace chdl {
+  void gen_syncram(unsigned asize, unsigned dsize, const vector<nodeid_t> &x) {
+    // Prototype of CHDL internal memory function as used by CHDL headers. We'll
+    // use it here too since we can't use the fixed-sized templates.
+    vector<node> memory_internal(
+      vector<node> &qa, vector<node> &d, vector<node> &da,
+      node w, string filename, bool sync, size_t &id
+    );
 
-typedef map<string, vector<node> > input_t;
+    std::vector<node> memory_add_read_port(
+      size_t id, std::vector<node> &qa
+    );
 
-void read_netlist(const char* filename, input_t inputs) {
-  std::vector<node> memory_internal(
-    std::vector<node> &qa, std::vector<node> &d, std::vector<node> &da,
-    node w, std::string filename, bool sync, size_t &id
-  );
-  std::vector<node> memory_add_read_port(size_t id, std::vector<node> &qa);
+    size_t id;
+    unsigned pos = 0;
+    vector<node> qa(asize), q, da(asize), d(dsize);
 
-  ifstream in(filename);
+    for (unsigned i = 0; i < asize; ++i) da[i] = gna[x[pos++]];
+    for (unsigned i = 0; i < dsize; ++i) d[i] = gna[x[pos++]];
+    node w = gna[x[pos++]];
+    for (unsigned i = 0; i < asize; ++i) qa[i] = gna[x[pos++]];
+    q = memory_internal(qa, d, da, w, "", true, id);
+    for (unsigned i = 0; i < dsize; ++i) gna[x[pos++]] = q[i];
 
-  map<nodeid_t, node> nodes;
-
-  string eat;
-  in >> eat;
-  if (eat != "inputs") die("Malformed netlist (at top).");
-  while (in.get() == '\n' && in.get() == ' ') {
-    in >> eat;
-    unsigned idx = 0;
-    while (in.peek() != '\n') {
-      unsigned node;
-      in >> node;
-      nodes[node] = inputs[eat][idx];
-      ++idx;
-    }
-  }
-
-  in >> eat;
-
-  if (eat != "utputs") die("Malformed netlist (after inputs).");
-
-  while (in.get() == '\n' && in.get() == ' ') {
-    in >> eat;
-    unsigned idx = 0;
-    while (in.peek() != '\n') {
-      unsigned node;
-      in >> node;
-      tap(eat, nodes[node]);
-      ++idx;
-    }
-  }
-
-  in >> eat;
-  if (eat != "esign") die("Malformed netlist (at end of taps).");
-
-  while (in) {
-    in >> eat;
-    nodeid_t in0, in1, out;
-    if (eat == "lit0") {
-      in >> out;
-      nodes[out] = Lit(0);
-    } else if (eat == "lit1") {
-      in >> out;
-      nodes[out] = Lit(1);
-    } else if (eat == "inv") {
-      in >> in0 >> out;
-      nodes[out] = Inv(nodes[in0]);
-    } else if (eat == "nand") {
-      in >> in0 >> in1 >> out;
-      nodes[out] = Nand(nodes[in0], nodes[in1]);
-    } else if (eat == "reg") {
-      in >> in0 >> out;
-      nodes[out] = Reg(nodes[in0]);
-    } else if (eat == "syncram") {
-      while (in.get() != '<');
-      unsigned abits, dbits; in >> abits; in >> dbits;
-      if (in.get() != '>') die("Malformed memory.");
-      vector<node> da, d;
-      vector<vector<node>> qa, q;
-
-      for (unsigned i = 0; i < abits; ++i) {
-        nodeid_t x;
-        in >> x;
-        da.push_back(nodes[x]);
-      }
-
-      for (unsigned i = 0; i < dbits; ++i) {
-        nodeid_t x;
-        in >> x;
-        d.push_back(nodes[x]);
-      }
-
-      nodeid_t w_nid; in >> w_nid;
-      node w(nodes[w_nid]);
-
-      unsigned port(0);
-      while (in.peek() != '\n') {
-        qa.push_back(vector<node>());
-        q.push_back(vector<node>());
-
-        for (unsigned i = 0; i < abits; ++i) {
-          nodeid_t x;
-          in >> x;
-          qa[port].push_back(nodes[x]);
-        }
-
-        for (unsigned i = 0; i < dbits; ++i) {
-          nodeid_t x;
-          in >> x;
-          q[port].push_back(nodes[x]);
-        }
-
-        ++port;
-      }
-
-      size_t id;
-      
-      vector<node> q0(memory_internal(qa[0], d, da, w, "", true, id));
-      for (unsigned i = 0; i < q0.size(); ++i) q[0][i] = q0[i];
-
-      for (unsigned i = 1; i < q.size(); ++i) {
-        vector<node> qi = memory_add_read_port(id, qa[i]);
-        for (unsigned j = 0; j < qi.size(); ++j) q[i][j] = qi[j];
-      }
-    } else {
-      die(("Unrecognized node type: " + eat).c_str());
+    // Additional ports
+    while (pos < x.size()) {
+      vector<node> xqa(asize), xq;
+      for (unsigned i = 0; i < asize; ++i) xqa[i] = gna[x[pos++]];
+      xq = memory_add_read_port(id, xqa);
+      for (unsigned i = 0; i < dsize; ++i) gna[x[pos++]] = xq[i];
     }
   }
 }
 
+void gen_tristate(const vector<nodeid_t> &x) {
+  tristatenode t;
+  for (unsigned i = 0; i < x.size() - 1; i += 2)
+    t.connect(gna[x[i]], gna[x[i+1]]);
+  gna[x[x.size()-1]] = t;
+}
+
+void gen(string name, const vector<unsigned> &params, const vector<nodeid_t> &i)
+{
+  if      (name == "lit0")    gna[i[0]] = Lit(0);
+  else if (name == "lit1")    gna[i[0]] = Lit(1);
+  else if (name == "litX")    gna[i[0]] = Lit('x');
+  else if (name == "reg")     gna[i[1]] = Reg(gna[i[0]]);
+  else if (name == "inv")     gna[i[1]] = Inv(gna[i[0]]);
+  else if (name == "nand")    gna[i[2]] = Nand(gna[i[0]], gna[i[1]]);
+  else if (name == "tri")     gen_tristate(i);
+  else if (name == "syncram") gen_syncram(params[0], params[1], i);
+
+  else {
+    cout << "Could not interpret device type \"" << name << "\"." << endl;
+    abort();
+  }
+}
+
+void read_design_line(istream &in) {
+  string dev;
+  in >> dev;
+
+  while (in.peek() == ' ') in.get();
+
+  if (dev == "") return;
+
+  vector<unsigned> params;
+  if (in.peek() == '<') {
+    in.get();
+    while (in.peek() != '>') {
+      unsigned n;
+      in >> n;
+      params.push_back(n);
+    }
+    in.get();
+  }
+
+  vector<nodeid_t> nv;
+  while (in.peek() != '\n') {
+    nodeid_t n;
+    in >> n;
+    nv.push_back(n);
+  }
+  in.get();
+
+  gen(dev, params, nv);
+}
+
+void read_taps(istream &in, map<string, vector<node> > &outputs, bool tap_io) {
+  while (in.peek() == ' ') {
+    string tapname;
+    in >> tapname;
+    while (in.peek() != '\n') {
+      nodeid_t n;
+      in >> n;
+      outputs[tapname].push_back(gna[n]);
+      if (tap_io) tap(tapname, gna[n]);
+    }
+    in.get();
+  }
+}
+
+void read_inputs(istream &in, map<string, vector<node> > &inputs, bool tap_io) {
+  while (in.peek() == ' ') {
+    string name;
+    in >> name;
+    while (in.peek() != '\n') {
+      nodeid_t n;
+      in >> n;
+      inputs[name].push_back(gna[n]);
+      if (tap_io) tap(name, gna[n]);
+    }
+    in.get();
+  }
+}
+
+void read_inout(istream &in, map<string, vector<tristatenode> > &inout,
+                bool tap_io)
+{
+  while (in.peek() == ' ') {
+    string name;
+    in >> name;    
+    while (in.peek() != '\n') {
+      nodeid_t n;
+      in >> n;
+      inout[name].push_back(tristatenode(gna[n]));
+      if (tap_io) tap(name, gna[n]);
+    }
+    in.get();
+  }
+}
+
+void read_design(istream &in) {
+  while (!!in) read_design_line(in);
+}
+
+void read_netlist(istream &in,
+                  map<string, vector<node> > &outputs,
+                  map<string, vector<node> > &inputs,
+                  map<string, vector<tristatenode> > &inout,
+                  bool tap_io)
+{
+  string eat;
+  in >> eat; in.get();
+  if (eat != "inputs") { cerr << "'inputs' expected.\n"; return; }
+
+  read_inputs(in, inputs, tap_io);
+
+  in >> eat; in.get();
+  if (eat != "outputs") { cerr << "'outputs' expected.\n"; return; }
+
+  read_taps(in, outputs, tap_io);
+
+  in >> eat; in.get();
+  if (eat != "inout") { cerr << "'inout' expected.\n"; return; }
+
+  read_inout(in, inout, tap_io);
+
+  in >> eat;
+  if (eat != "design") { cerr << "'design' expected.\n"; return; }
+
+  read_design(in);
+}
+
+void ldnetl(map<string, vector<node> > &outputs,
+            map<string, vector<node> > &inputs,
+            map<string, vector<tristatenode> > &inout, 
+            string filename, bool tap_io)
+{
+  ifstream infile(filename);
+  read_netlist(infile, outputs, inputs, inout, tap_io);
+
+  gna.clear();
+}
+
+typedef ag<STP("hsync"), out<node>,
+        ag<STP("vsync"), out<node>,
+        ag<STP("dacdata"), out<vec<3, bvec<4> > > > > > vgasig;
+
+struct iface_t {
+  std::map<std::string, std::vector<node> > in, out;
+  std::map<std::string, std::vector<tristatenode> > inout;
+
+  template <typename T> iface_t operator()(std::string name, T &x) {
+    x = Bind<T>(name, in, out, inout);
+    return *this;
+  }
+};
+
+void Load(string filename, iface_t &iface) {
+  ldnetl(iface.out, iface.in, iface.inout, filename, false);
+}
+
+iface_t Load(string filename) {
+  iface_t r;
+  Load(filename, r);
+  return r;
 }
 
 int main(int argc, char **argv) {
-  if (argc != 2) {
-    cout << "Usage:" << endl << "  " << argv[0] << " <nand file>" << endl;
-    return 1;
-  }
+  // map<string, vector<node> > out, in;
+  // map<string, vector<tristatenode> > inout;
+  //ldnetl(out, in, inout, argv[1], false);
+  //vgasig bound_output(Bind<vgasig>("vga", in, out, inout));
 
-  input_t inputs;
+  vgasig bound_output;
+  Load(argv[1])("vga", bound_output);
 
-  read_netlist(argv[1], inputs);
+  TAP(bound_output);
+
   optimize();
-
-  // opt_dead_node_elimination();
-
-  // ofstream wave_file("waveform.vcd");
-  // run(wave_file, 10000);
+ 
+  ofstream vcd("ldnetl.vcd");
+  run(vcd, 100000);
 
   return 0;
 }
