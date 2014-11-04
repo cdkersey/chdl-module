@@ -19,13 +19,17 @@ void show(const runtime_ag_t &r) {
 }
 
 int main() {
+  bvec<8> next_ctr, ctr(Reg(next_ctr)); next_ctr = ctr + Lit<8>(1);
+
   z80_bus_t io;
+
+  _(io, "d").connect(ctr, Lit(1));
 
   EXPOSE(io);
 
   optimize();
 
-  ofstream netlist("main.nand");
+  ofstream netlist("test_1.nand");
   print_netlist(netlist);
 
   return 0;
