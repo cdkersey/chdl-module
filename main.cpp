@@ -20,8 +20,8 @@ typedef ag<STP("rd"), out<node>,
         ag<STP("m1"), out<node>,
         ag<STP("halt"), out<node>,
         ag<STP("refsh"), out<node>,
-        ag<STP("a"), inout<bvec<16> >, // (can be tri-stated)
-        ag<STP("d"), inout<bvec<8> > > > > > > > > > > > > > > > z80_bus_t;
+        ag<STP("a"), inout<bus<16> >, // (can be tri-stated)
+        ag<STP("d"), inout<bus<8> > > > > > > > > > > > > > > > z80_bus_t;
 
 void show(const runtime_ag_t &r) {
   for (auto &p : r) {

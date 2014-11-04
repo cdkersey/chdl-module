@@ -40,6 +40,13 @@ namespace chdl {
     for (unsigned i = 0; i < N; ++i) r[prefix].push_back(x[i]);
   }
 
+  template <unsigned N>
+    void Runtimify(runtime_ag_t &r, const bus<N> &x, std::string prefix = "",
+                   direction_t dir = DIR_ALL)
+  {
+    for (unsigned i = 0; i < N; ++i) r[prefix].push_back(x[i]);
+  }
+
   template <unsigned N, typename T>
     void Runtimify(runtime_ag_t &r, const vec<N, T> &x, std::string prefix = "",
                    direction_t dir = DIR_ALL)
@@ -154,7 +161,17 @@ namespace chdl {
     return r;
   }
 
-  // void Load(const char *filename);
+  struct iface_t {
+    std::map<std::string, std::vector<node> > in, out;
+    std::map<std::string, std::vector<tristatenode> > inout;
+
+    template <typename T> iface_t operator()(std::string name, T &x) {
+      x = Bind<T>(name, in, out, inout);
+      return *this;
+    }
+  };
+
+  iface_t Load(std::string filename);
 };
 
 #endif

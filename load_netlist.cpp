@@ -191,20 +191,6 @@ void ldnetl(map<string, vector<node> > &outputs,
   gna.clear();
 }
 
-typedef ag<STP("hsync"), out<node>,
-        ag<STP("vsync"), out<node>,
-        ag<STP("dacdata"), out<vec<3, bvec<4> > > > > > vgasig;
-
-struct iface_t {
-  std::map<std::string, std::vector<node> > in, out;
-  std::map<std::string, std::vector<tristatenode> > inout;
-
-  template <typename T> iface_t operator()(std::string name, T &x) {
-    x = Bind<T>(name, in, out, inout);
-    return *this;
-  }
-};
-
 void Load(string filename, iface_t &iface) {
   ldnetl(iface.out, iface.in, iface.inout, filename, false);
 }
@@ -215,21 +201,3 @@ iface_t Load(string filename) {
   return r;
 }
 
-int main(int argc, char **argv) {
-  // map<string, vector<node> > out, in;
-  // map<string, vector<tristatenode> > inout;
-  //ldnetl(out, in, inout, argv[1], false);
-  //vgasig bound_output(Bind<vgasig>("vga", in, out, inout));
-
-  vgasig bound_output;
-  Load(argv[1])("vga", bound_output);
-
-  TAP(bound_output);
-
-  optimize();
- 
-  ofstream vcd("ldnetl.vcd");
-  run(vcd, 100000);
-
-  return 0;
-}
