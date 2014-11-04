@@ -1,5 +1,5 @@
 CXXFLAGS=-std=c++11 -I../
-LDLIBS=-lchdl -L.. -lchdl-module
+LDLIBS=-lchdl -lchdl-module
 
 all: test_1 load_z80
 
