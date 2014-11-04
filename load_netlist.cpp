@@ -50,14 +50,15 @@ namespace chdl {
   }
 }
 
-void gen_tristate(const vector<nodeid_t> &x) {
+static void gen_tristate(const vector<nodeid_t> &x) {
   tristatenode t;
   for (unsigned i = 0; i < x.size() - 1; i += 2)
     t.connect(gna[x[i]], gna[x[i+1]]);
   gna[x[x.size()-1]] = t;
 }
 
-void gen(string name, const vector<unsigned> &params, const vector<nodeid_t> &i)
+static void gen(string name, const vector<unsigned> &params,
+                const vector<nodeid_t> &i)
 {
   if      (name == "lit0")    gna[i[0]] = Lit(0);
   else if (name == "lit1")    gna[i[0]] = Lit(1);
@@ -74,7 +75,7 @@ void gen(string name, const vector<unsigned> &params, const vector<nodeid_t> &i)
   }
 }
 
-void read_design_line(istream &in) {
+static void read_design_line(istream &in) {
   string dev;
   in >> dev;
 
@@ -104,7 +105,9 @@ void read_design_line(istream &in) {
   gen(dev, params, nv);
 }
 
-void read_taps(istream &in, map<string, vector<node> > &outputs, bool tap_io) {
+static void read_taps(istream &in, map<string, vector<node> > &outputs,
+                      bool tap_io)
+{
   while (in.peek() == ' ') {
     string tapname;
     in >> tapname;
@@ -118,7 +121,9 @@ void read_taps(istream &in, map<string, vector<node> > &outputs, bool tap_io) {
   }
 }
 
-void read_inputs(istream &in, map<string, vector<node> > &inputs, bool tap_io) {
+static void read_inputs(istream &in, map<string, vector<node> > &inputs,
+                        bool tap_io)
+{
   while (in.peek() == ' ') {
     string name;
     in >> name;
@@ -132,8 +137,8 @@ void read_inputs(istream &in, map<string, vector<node> > &inputs, bool tap_io) {
   }
 }
 
-void read_inout(istream &in, map<string, vector<tristatenode> > &inout,
-                bool tap_io)
+static void read_inout(istream &in, map<string, vector<tristatenode> > &inout,
+                       bool tap_io)
 {
   while (in.peek() == ' ') {
     string name;
@@ -148,11 +153,11 @@ void read_inout(istream &in, map<string, vector<tristatenode> > &inout,
   }
 }
 
-void read_design(istream &in) {
+static void read_design(istream &in) {
   while (!!in) read_design_line(in);
 }
 
-void read_netlist(istream &in,
+static void read_netlist(istream &in,
                   map<string, vector<node> > &outputs,
                   map<string, vector<node> > &inputs,
                   map<string, vector<tristatenode> > &inout,
@@ -180,7 +185,7 @@ void read_netlist(istream &in,
   read_design(in);
 }
 
-void ldnetl(map<string, vector<node> > &outputs,
+static void ldnetl(map<string, vector<node> > &outputs,
             map<string, vector<node> > &inputs,
             map<string, vector<tristatenode> > &inout, 
             string filename, bool tap_io)
@@ -191,13 +196,12 @@ void ldnetl(map<string, vector<node> > &outputs,
   gna.clear();
 }
 
-void Load(string filename, iface_t &iface) {
+static void Load_i(string filename, iface_t &iface) {
   ldnetl(iface.out, iface.in, iface.inout, filename, false);
 }
 
-iface_t Load(string filename) {
+iface_t chdl::Load(string filename) {
   iface_t r;
-  Load(filename, r);
+  Load_i(filename, r);
   return r;
 }
-

@@ -6,4 +6,4 @@ libchdl-module.so: load_netlist.cpp loader.cpp loader.h
 	$(CXX) -o $@ $(CXXFLAGS) $(LDFLAGS) $^ $(LDLIBS)
 
 clean:
-	rm -f main
+	rm -f *.so *.o
