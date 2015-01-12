@@ -21,11 +21,21 @@ namespace chdl {
 
   typedef std::map<std::string, std::vector<node> > runtime_ag_t;
 
+  // Defaults for unflattenables.
+  static bvec<0> Flatten(const ag_endtype &x) {}
+  
   // This should probably get a more dignified name than "runtimify".
   template <typename T>
     void Runtimify(runtime_ag_t &r, const T &x, std::string prefix = "",
                    direction_t dir = DIR_ALL)
-  { }
+  {
+    const unsigned SIZE(sz<T>::value);
+
+    if (SIZE != 0) {
+      bvec<SIZE> xv(Flatten(x));
+      Runtimify(r, xv, prefix, dir);
+    }
+  }
 
   static void Runtimify(runtime_ag_t &r, const node &x, std::string prefix = "",
                         direction_t dir = DIR_ALL)
