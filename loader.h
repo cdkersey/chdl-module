@@ -8,6 +8,7 @@
 #include <vector>
 #include <sstream>
 #include <string>
+#include <iostream>
 
 namespace chdl {
   // Turn a string type into a c++ string.
@@ -177,6 +178,12 @@ namespace chdl {
 
     template <typename T> iface_t operator()(std::string name, T &x) {
       x = Bind<T>(name, in, out, inout);
+      return *this;
+    }
+
+    template <typename T> iface_t operator()(std::string name, const T &x) {
+      T y(x);
+      y = Bind<T>(name, in, out, inout);
       return *this;
     }
   };
