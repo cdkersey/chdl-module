@@ -157,17 +157,23 @@ namespace chdl {
     // TODO: make sure vector sizes match
 
     // Assign nodes from the arguments to our return value's fields.
-    for (auto &x : in_module)
+    for (auto &x : in_module) {
       for (unsigned i = 0; i < x.second.size(); ++i)
         x.second[i] = in[x.first][i];
+      in.erase(x.first); // TODO: really?
+    }
 
-    for (auto &x : out_module)
+    for (auto &x : out_module) {
       for (unsigned i = 0; i < x.second.size(); ++i)
         x.second[i] = out[x.first][i];
+      out.erase(x.first); // TODO: really?
+    }
 
-    for (auto &x : inout_module)
+    for (auto &x : inout_module) {
       for (unsigned i = 0; i < x.second.size(); ++i)
         x.second[i] = inout[x.first][i];
+      inout.erase(x.first); // TODO: really?
+    }
 
     return r;
   }
@@ -176,14 +182,22 @@ namespace chdl {
     std::map<std::string, std::vector<node> > in, out;
     std::map<std::string, std::vector<tristatenode> > inout;
 
-    template <typename T> iface_t operator()(std::string name, T &x) {
+    template <typename T> iface_t &operator()(std::string name, T &x) {
       x = Bind<T>(name, in, out, inout);
       return *this;
     }
 
-    template <typename T> iface_t operator()(std::string name, const T &x) {
+    template <typename T> iface_t &operator()(std::string name, const T &x) {
       T y(x);
       y = Bind<T>(name, in, out, inout);
+      return *this;
+    }
+
+    iface_t & tap(std::string prefix = "") {
+      for (auto &x : out) {
+	for (unsigned i = 0; i < x.second.size(); ++i)
+	  chdl::tap(prefix + x.first, x.second[i]);
+      }
       return *this;
     }
   };
