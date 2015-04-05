@@ -114,8 +114,8 @@ static void read_taps(istream &in, map<string, vector<node> > &outputs,
     while (in.peek() != '\n') {
       nodeid_t n;
       in >> n;
-      outputs[tapname].push_back(gna[n]);
-      if (tap_io) tap(tapname, gna[n]);
+      outputs[tapname].push_back(Inv(Inv(gna[n])));
+      if (tap_io) tap(tapname, Inv(Inv(gna[n])));
     }
     in.get();
   }
