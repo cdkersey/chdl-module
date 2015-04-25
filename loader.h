@@ -101,8 +101,8 @@ namespace chdl {
     Runtimify(r, x.next, prefix, dir);
   }
 
-  template <typename NAME, typename T, typename NEXT>
-    runtime_ag_t Runtimify(const ag<NAME, T, NEXT> &x, std::string prefix = "",
+  template <typename T>
+    runtime_ag_t Runtimify(const T &x, std::string prefix = "",
                            direction_t dir = DIR_ALL)
   {
     runtime_ag_t r;
