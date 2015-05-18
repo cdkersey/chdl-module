@@ -1,9 +1,9 @@
 CXXFLAGS = -std=c++11 -fPIC
 LDFLAGS = -shared
 LDLIBS = -lchdl
-CHDL_PREFIX ?= /usr/local
-CHDL_INCLUDE ?= $(CHDL_PREFIX)/include/chdl
-CHDL_LIB ?= $(CHDL_PREFIX)/lib
+PREFIX ?= /usr/local
+CHDL_INCLUDE ?= $(PREFIX)/include/chdl
+CHDL_LIB ?= $(PREFIX)/lib
 
 libchdl-module.so: load_netlist.cpp loader.cpp loader.h
 	$(CXX) -o $@ $(CXXFLAGS) $(LDFLAGS) $^ $(LDLIBS)
