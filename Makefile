@@ -8,7 +8,7 @@ CHDL_LIB ?= $(PREFIX)/lib
 libchdl-module.so: load_netlist.cpp loader.cpp loader.h
 	$(CXX) -o $@ $(CXXFLAGS) $(LDFLAGS) $^ $(LDLIBS)
 
-install:
+install: libchdl-module.so
 	cp loader.h $(CHDL_INCLUDE)
 	cp libchdl-module.so $(CHDL_LIB)
 	ldconfig
