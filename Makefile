@@ -9,6 +9,8 @@ libchdl-module.so: load_netlist.cpp loader.cpp loader.h
 	$(CXX) -o $@ $(CXXFLAGS) $(LDFLAGS) $^ $(LDLIBS)
 
 install: libchdl-module.so
+	mkdir -p $(CHDL_INCLUDE)
+	mkdir -p $(CHDL_LIB)
 	cp loader.h $(CHDL_INCLUDE)
 	cp libchdl-module.so $(CHDL_LIB)
 	ldconfig
