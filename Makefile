@@ -6,7 +6,7 @@ CHDL_INCLUDE ?= $(PREFIX)/include/chdl
 CHDL_LIB ?= $(PREFIX)/lib
 
 libchdl-module.so: load_netlist.cpp loader.cpp loader.h
-	$(CXX) -o $@ $(CXXFLAGS) $(LDFLAGS) $^ $(LDLIBS)
+	$(CXX) -o $@ $(CXXFLAGS) $(LDFLAGS) load_netlist.cpp loader.cpp $(LDLIBS)
 
 install: libchdl-module.so
 	mkdir -p $(CHDL_INCLUDE)
